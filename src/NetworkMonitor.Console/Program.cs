@@ -222,15 +222,28 @@ record PingResult(bool Success, long RoundtripTime);
 
 class TargetStatistics
 {
-    private readonly List<PingResult> _results = [];
+    private const int MaxResults = 1000;
+    private readonly Queue<PingResult> _results = new();
+    private int _totalSent = 0;
+    private int _totalLost = 0;
 
-    public void AddResult(PingResult result) => _results.Add(result);
+    public void AddResult(PingResult result)
+    {
+        _totalSent++;
+        if (!result.Success) _totalLost++;
 
-    public int TotalSent => _results.Count;
+        _results.Enqueue(result);
+        if (_results.Count > MaxResults)
+        {
+            _results.Dequeue();
+        }
+    }
 
-    public int LostCount => _results.Count(r => !r.Success);
+    public int TotalSent => _totalSent;
 
-    public double LossPercentage => TotalSent == 0 ? 0 : (double)LostCount / TotalSent * 100;
+    public int LostCount => _totalLost;
+
+    public double LossPercentage => _totalSent == 0 ? 0 : (double)_totalLost / _totalSent * 100;
 
     public long? LastRoundtrip => _results.LastOrDefault(r => r.Success)?.RoundtripTime;
 
